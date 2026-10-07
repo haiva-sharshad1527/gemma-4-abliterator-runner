@@ -1,4 +1,4 @@
-name: Gemma 4 Refusal Removal (Public 16GB RAM + 16GB Swap)
+name: Gemma 4 Refusal Removal (Public 16GB RAM)
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ on:
 jobs:
   abliterate:
     runs-on: ubuntu-latest
-    name: Run Weight Orthogonalization (16GB RAM + Swap)
+    name: Run Weight Orthogonalization
 
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -29,12 +29,14 @@ jobs:
           docker-images: true
           swap-storage: false
 
-      - name: Create 16GB Swap File
+      - name: Add 8GB Swap File
         run: |
-          sudo fallocate -l 16G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
+          sudo swapoff -a || true
+          sudo rm -f /mnt/swapfile
+          sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
           free -h
 
       - name: Checkout Repository
