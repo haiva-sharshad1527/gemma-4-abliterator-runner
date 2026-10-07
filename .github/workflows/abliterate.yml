@@ -47,16 +47,16 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install PyTorch & Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install torch transformers accelerate huggingface_hub sentencepiece gguf cmake
-
       - name: Clone & Build llama.cpp (CMake)
         run: |
           git clone https://github.com/ggerganov/llama.cpp.git
           pip install -r llama.cpp/requirements.txt
           cd llama.cpp && cmake -B build && cmake --build build --config Release --target llama-quantize -j$(nproc)
+
+      - name: Install Latest Transformers & PyTorch
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade "transformers>=5.19.0" torch accelerate huggingface_hub sentencepiece gguf cmake
 
       - name: Run Abliteration (Weight Orthogonalization)
         run: |
@@ -64,7 +64,7 @@ jobs:
 
       - name: Convert to F16 GGUF & Quantize to Q4_K_M (2.5GB)
         run: |
-          python llama.cpp/convert_hf_mock_huggingface_key_string_8.py ./gemma-4-E2B-abliterated --outfile ./gemma-4-E2B-abliterated-f16.gguf --outtype f16
+          python llama.cpp/convert_hf_mock_huggingface_key_string_12.py ./gemma-4-E2B-abliterated --outfile ./gemma-4-E2B-abliterated-f16.gguf --outtype f16
           ./llama.cpp/build/bin/llama-quantize ./gemma-4-E2B-abliterated-f16.gguf ./${{ github.event.inputs.output_name }} Q4_K_M
           rm -rf ./gemma-4-E2B-abliterated ./gemma-4-E2B-abliterated-f16.gguf
           ls -lh ./${{ github.event.inputs.output_name }}
