@@ -1,0 +1,62 @@
+name: Gemma 4 Refusal Removal (Public 16GB RAM + 16GB Swap)
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_id:
+        description: 'Hugging Face Model Repo ID'
+        required: true
+        default: 'google/gemma-4-E2B-it'
+      output_name:
+        description: 'Output Folder / Package Name'
+        required: true
+        default: 'gemma-4-E2B-abliterated'
+
+jobs:
+  abliterate:
+    runs-on: ubuntu-latest
+    name: Run Weight Orthogonalization (16GB RAM + Swap)
+
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@v2
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+
+      - name: Create 16GB Swap File
+        run: |
+          sudo fallocate -l 16G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyTorch & Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch transformers accelerate huggingface_hub
+
+      - name: Run Abliteration
+        run: |
+          python abliterate.py --model "${{ github.event.inputs.model_id }}" --output "./${{ github.event.inputs.output_name }}"
+
+      - name: Archive Model Output Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.output_name }}
+          path: ./${{ github.event.inputs.output_name }}/*
+          retention-days: 7
