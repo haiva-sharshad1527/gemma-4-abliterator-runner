@@ -64,7 +64,8 @@ jobs:
 
       - name: Convert to F16 GGUF & Quantize to Q4_K_M (2.5GB)
         run: |
-          python llama.cpp/convert_hf_mock_huggingface_key_string_12.py ./gemma-4-E2B-abliterated --outfile ./gemma-4-E2B-abliterated-f16.gguf --outtype f16
+          CONVERT_SCRIPT=$(find llama.cpp -name "convert*.py" | head -n 1)
+          python "$CONVERT_SCRIPT" ./gemma-4-E2B-abliterated --outfile ./gemma-4-E2B-abliterated-f16.gguf --outtype f16
           ./llama.cpp/build/bin/llama-quantize ./gemma-4-E2B-abliterated-f16.gguf ./${{ github.event.inputs.output_name }} Q4_K_M
           rm -rf ./gemma-4-E2B-abliterated ./gemma-4-E2B-abliterated-f16.gguf
           ls -lh ./${{ github.event.inputs.output_name }}
