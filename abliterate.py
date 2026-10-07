@@ -73,12 +73,14 @@ def abliterate_model(model_id: str, output_dir: str):
     with torch.no_grad():
         for name, param in model.named_parameters():
             if "weight" in name and param.dim() == 2:
+                if "embed_tokens" in name or "lm_head" in name:
+                    continue
                 param_f32 = param.to(torch.float32)
-                if param.shape[0] == refusal_dir.shape[0]:
-                    proj = torch.outer(torch.mv(param_f32, refusal_dir), refusal_dir)
+                if param.shape[1] == refusal_dir.shape[0]:
+                    proj = torch.matmul(param_f32, refusal_dir).unsqueeze(1) * refusal_dir.unsqueeze(0)
                     param.copy_((param_f32 - proj).to(param.dtype))
-                elif param.shape[1] == refusal_dir.shape[0]:
-                    proj = torch.outer(refusal_dir, torch.mv(param_f32.T, refusal_dir)).T
+                elif param.shape[0] == refusal_dir.shape[0]:
+                    proj = refusal_dir.unsqueeze(1) * torch.matmul(refusal_dir.unsqueeze(0), param_f32)
                     param.copy_((param_f32 - proj).to(param.dtype))
 
     os.makedirs(output_dir, exist_ok=True)
