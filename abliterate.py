@@ -57,7 +57,7 @@ def abliterate_model(model_id: str, output_dir: str):
     if token:
         kwargs["token"] = token
 
-    tokenizer = AutoTokenizer.from_pretrained(model_id, **kwargs)
+    tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False, **kwargs)
     
     dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
     model = AutoModelForCausalLM.from_pretrained(
