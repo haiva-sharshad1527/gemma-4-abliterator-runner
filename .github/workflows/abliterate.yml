@@ -1,4 +1,4 @@
-name: Gemma 4 Refusal Removal (Public 16GB RAM)
+name: Gemma 4 Refusal Removal & GGUF 4-bit Quantization
 
 on:
   workflow_dispatch:
@@ -10,12 +10,12 @@ on:
       output_name:
         description: 'Output Folder / Package Name'
         required: true
-        default: 'gemma-4-E2B-abliterated'
+        default: 'gemma-4-E2B-abliterated-Q4_K_M.gguf'
 
 jobs:
-  abliterate:
+  abliterate-and-quantize:
     runs-on: ubuntu-latest
-    name: Run Weight Orthogonalization
+    name: Run Abliteration and GGUF Quantization
 
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -50,15 +50,28 @@ jobs:
       - name: Install PyTorch & Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install torch transformers accelerate huggingface_hub
+          pip install torch transformers accelerate huggingface_hub sentencepiece gguf
 
-      - name: Run Abliteration
+      - name: Clone & Build llama.cpp
         run: |
-          python abliterate.py --model "${{ github.event.inputs.model_id }}" --output "./${{ github.event.inputs.output_name }}"
+          git clone https://github.com/ggerganov/llama.cpp.git
+          pip install -r llama.cpp/requirements.txt
+          cd llama.cpp && make llama-quantize -j$(nproc)
 
-      - name: Archive Model Output Artifacts
+      - name: Run Abliteration (Weight Orthogonalization)
+        run: |
+          python abliterate.py --model "${{ github.event.inputs.model_id }}" --output "./gemma-4-E2B-abliterated"
+
+      - name: Convert to F16 GGUF & Quantize to Q4_K_M (2.5GB)
+        run: |
+          python llama.cpp/convert_hf_to_gguf.py ./gemma-4-E2B-abliterated --outfile ./gemma-4-E2B-abliterated-f16.gguf --outtype f16
+          ./llama.cpp/llama-quantize ./gemma-4-E2B-abliterated-f16.gguf ./${{ github.event.inputs.output_name }} Q4_K_M
+          rm -rf ./gemma-4-E2B-abliterated ./gemma-4-E2B-abliterated-f16.gguf
+          ls -lh ./${{ github.event.inputs.output_name }}
+
+      - name: Archive GGUF Model Artifact (~2.5GB)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.inputs.output_name }}
-          path: ./${{ github.event.inputs.output_name }}/*
+          path: ./${{ github.event.inputs.output_name }}
           retention-days: 7
