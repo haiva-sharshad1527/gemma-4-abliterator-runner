@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Gemma 4 Refusal Removal Tool (Abliteration via Weight Orthogonalization)
+Gemma 4 & Qwen Refusal Removal Tool (Abliteration via Weight Orthogonalization)
 Calculates refusal direction in transformer residual activations and orthogonalizes weights.
+Uses low_cpu_mem_usage=True to run 7B-14B models on low RAM runners without OOM.
 """
 
 import argparse
@@ -48,7 +49,7 @@ def calculate_refusal_direction(model, tokenizer, harmful_prompts, harmless_prom
 def abliterate_model(model_id: str, output_dir: str):
     from transformers import AutoTokenizer, AutoModelForCausalLM
 
-    print(f"[abliterate] Loading base model {model_id} (using bfloat16 for memory efficiency)...")
+    print(f"[abliterate] Loading base model {model_id} (low_cpu_mem_usage=True, bfloat16)...")
     token = os.environ.get("HF_TOKEN", None)
     if not token or not token.strip():
         token = None
@@ -63,7 +64,8 @@ def abliterate_model(model_id: str, output_dir: str):
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         torch_dtype=dtype,
-        device_map="auto" if torch.cuda.is_available() else "cpu",
+        low_cpu_mem_usage=True,
+        device_map="cpu",
         **kwargs
     )
 
@@ -90,9 +92,9 @@ def abliterate_model(model_id: str, output_dir: str):
     print("[abliterate] Done! Refusal direction successfully orthogonalized.")
 
 def main():
-    parser = argparse.ArgumentParser(description="Gemma 4 Weight Orthogonalization Abliterator")
+    parser = argparse.ArgumentParser(description="Gemma 4 & Qwen Weight Orthogonalization Abliterator")
     parser.add_argument("--model", "-m", type=str, default="google/gemma-4-E2B-it", help="Model repo ID")
-    parser.add_argument("--output", "-o", type=str, default="./gemma-4-E2B-abliterated", help="Output directory")
+    parser.add_argument("--output", "-o", type=str, default="./model-abliterated", help="Output directory")
 
     args = parser.parse_args()
     abliterate_model(args.model, args.output)
