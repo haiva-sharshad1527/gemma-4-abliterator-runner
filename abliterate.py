@@ -2,7 +2,7 @@
 """
 Gemma 4 & Qwen Refusal Removal Tool (Abliteration via Weight Orthogonalization)
 Calculates refusal direction in transformer residual activations and orthogonalizes weights.
-Uses low_cpu_mem_usage=True to run 7B-14B models on low RAM runners without OOM.
+Uses offload_folder and low_cpu_mem_usage=True to run 7B-14B models on low RAM runners without OOM.
 """
 
 import argparse
@@ -49,7 +49,7 @@ def calculate_refusal_direction(model, tokenizer, harmful_prompts, harmless_prom
 def abliterate_model(model_id: str, output_dir: str):
     from transformers import AutoTokenizer, AutoModelForCausalLM
 
-    print(f"[abliterate] Loading base model {model_id} (low_cpu_mem_usage=True, bfloat16)...")
+    print(f"[abliterate] Loading base model {model_id} (offload_folder='./offload', low_cpu_mem_usage=True)...")
     token = os.environ.get("HF_TOKEN", None)
     if not token or not token.strip():
         token = None
@@ -60,12 +60,15 @@ def abliterate_model(model_id: str, output_dir: str):
 
     tokenizer = AutoTokenizer.from_pretrained(model_id, **kwargs)
     
+    os.makedirs("./offload", exist_ok=True)
     dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         torch_dtype=dtype,
         low_cpu_mem_usage=True,
-        device_map="cpu",
+        device_map="auto" if torch.cuda.is_available() else "cpu",
+        offload_folder="./offload",
+        offload_state_dict=True,
         **kwargs
     )
 
